@@ -2,6 +2,10 @@
 
 Interactive, browser-based explainers for three practical data engineering pipeline patterns. Each page is designed to make the pattern understandable visually first, then reinforce it with business context, Postgres-style SQL, table definitions, and before/after dummy data.
 
+![Animated preview of the microbatch hourly dedupe explainer](assets/microbatch-preview.gif)
+
+Preview: the microbatch explainer shows raw hourly events getting deduped, merged across hours, and published as a clean daily table.
+
 ## Suggested Repo Name
 
 Recommended:
