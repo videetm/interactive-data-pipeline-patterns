@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Little Book of Pipelines</title>
+  <style>
+    :root {
+      --bg: #10120f;
+      --panel: #f5f1e7;
+      --ink: #171713;
+      --muted: #6d675b;
+      --line: rgba(23, 23, 19, .16);
+      --source: #2563eb;
+      --group: #0f766e;
+      --book: #b45309;
+      --output: #7c3aed;
+      --new: #dcfce7;
+      --old: #e0e7ff;
+      --changed: #fef3c7;
+      --missing: #fee2e2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(37,99,235,.26), transparent 28%),
+        radial-gradient(circle at 86% 16%, rgba(124,58,237,.24), transparent 30%),
+        #10120f;
+    }
+    main { width: min(1240px, calc(100vw - 32px)); margin: 0 auto; padding: 30px 0; display: flex; flex-direction: column; }
+    .hero { order: 0; color: white; display: grid; grid-template-columns: 1fr 360px; gap: 22px; align-items: end; margin-bottom: 18px; }
+    h1 { margin: 0 0 10px; font-size: clamp(34px, 5vw, 62px); line-height: .96; }
+    .hero p { margin: 0; color: rgba(255,255,255,.75); font-size: 17px; line-height: 1.45; max-width: 780px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .metric { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color: white; border-radius: 8px; padding: 13px; }
+    .metric b { display: block; font-size: 22px; }
+    .metric span { color: rgba(255,255,255,.68); font-size: 12px; }
+    .story, .guide-card, .viz, .side, .query-lab { border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: var(--panel); box-shadow: 0 22px 70px rgba(0,0,0,.28); }
+    .story { order: 2; padding: 20px; margin-bottom: 16px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+    h2 { margin: 0 0 9px; font-size: 22px; }
+    p { margin: 0; color: var(--muted); line-height: 1.47; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+    .mini { border: 1px solid var(--line); background: #fffdf8; border-radius: 8px; padding: 12px; }
+    .mini b { display: block; font-size: 13px; margin-bottom: 4px; }
+    .mini span, li { color: var(--muted); font-size: 13px; line-height: 1.38; }
+    .guide { order: 3; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+    .guide-card { padding: 17px; min-height: 222px; }
+    .guide-card h2 { font-size: 18px; }
+    ul { margin: 0; padding-left: 18px; }
+    li + li { margin-top: 8px; }
+    strong { color: var(--ink); }
+    .query-lab { order: 4; padding: 20px; margin-bottom: 16px; }
+    .lab-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #fffdf8; border-radius: 999px; padding: 6px 9px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .tag:before { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--tag); }
+    .lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .sql-box { grid-column: 1 / -1; background: #111827; color: #f9fafb; border-radius: 8px; padding: 14px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .sql-keyword { color: #93c5fd; font-weight: 800; }
+    .sql-string { color: #86efac; }
+    .sql-comment { color: #9ca3af; font-style: italic; }
+    .sql-number { color: #fbbf24; }
+    .table-card { border: 1px solid var(--line); background: #fffdf8; border-radius: 8px; overflow: auto; }
+    .table-card h3 { margin: 0; padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; min-width: 520px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; font-size: 12px; white-space: nowrap; }
+    th { background: #f1eadb; }
+    td { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .new { background: var(--new); }
+    .oldv { background: var(--old); }
+    .changed { background: var(--changed); }
+    .missing { background: var(--missing); }
+    .workspace { order: 1; display: grid; grid-template-columns: 330px 1fr; gap: 16px; margin-bottom: 16px; }
+    .side { padding: 18px; display: grid; gap: 12px; align-content: start; }
+    .start-card { border: 1px solid var(--line); background: #171713; color: white; border-radius: 8px; padding: 13px; }
+    .start-card b { display: block; margin-bottom: 5px; font-size: 14px; }
+    .start-card span { display: block; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.38; }
+    .step { width: 100%; display: grid; grid-template-columns: 34px 1fr; gap: 10px; text-align: left; align-items: center; border: 1px solid var(--line); background: #fffdf8; border-radius: 8px; padding: 10px; cursor: pointer; font: inherit; }
+    .step i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: #e7dfcd; font-style: normal; font-weight: 900; }
+    .step b { display: block; font-size: 14px; }
+    .step span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .step.active { background: #171713; color: white; border-color: #171713; }
+    .step.active span { color: rgba(255,255,255,.68); }
+    .step.active i { background: rgba(255,255,255,.14); }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button.control { border: 1px solid #171713; border-radius: 8px; background: #171713; color: white; padding: 10px; font: inherit; font-weight: 800; cursor: pointer; }
+    button.secondary { background: transparent; color: #171713; }
+    .explain { border-top: 1px solid var(--line); padding-top: 13px; }
+    .explain h2 { font-size: 16px; }
+    .viz { min-height: 650px; overflow: hidden; background: linear-gradient(90deg, rgba(23,23,19,.05) 1px, transparent 1px), linear-gradient(0deg, rgba(23,23,19,.05) 1px, transparent 1px), #f8f6ef; background-size: 42px 42px; }
+    .bar { height: 58px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; background: rgba(255,255,255,.58); }
+    .pill { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: #fffdf8; color: var(--muted); font-size: 12px; font-weight: 800; margin-right: 7px; }
+    .pill:before { content: ""; width: 9px; height: 9px; border-radius: 999px; background: var(--dot); }
+    .canvas { position: relative; height: 592px; min-width: 850px; }
+    .cluster { position: absolute; border: 1px solid var(--line); background: #fffdf8; border-radius: 8px; padding: 12px; box-shadow: 0 14px 28px rgba(23,23,19,.10); opacity: .18; transform: translateY(8px); transition: opacity .25s ease, transform .25s ease; }
+    .cluster.show { opacity: 1; transform: translateY(0); }
+    .cluster.active { box-shadow: 0 0 0 6px rgba(180,83,9,.14), 0 20px 42px rgba(23,23,19,.15); }
+    .cluster h3 { margin: 0 0 8px; font-size: 15px; }
+    .row { border: 1px solid var(--line); background: #f8f4ea; border-radius: 8px; padding: 8px; margin-top: 7px; font-size: 12px; color: var(--muted); }
+    .row b { color: var(--ink); }
+    .sources { left: 28px; top: 54px; width: 210px; }
+    .groups { left: 285px; top: 80px; width: 210px; }
+    .schema { left: 540px; top: 60px; width: 250px; }
+    .book { left: 285px; top: 332px; width: 245px; }
+    .output { left: 575px; top: 342px; width: 230px; }
+    .spark { left: 36px; top: 350px; width: 195px; }
+    svg { position: absolute; inset: 0; pointer-events: none; }
+    path { fill: none; stroke: rgba(23,23,19,.24); stroke-width: 2; stroke-dasharray: 7 8; opacity: 0; transition: opacity .2s ease; animation: dash 1.1s linear infinite; }
+    path.show { opacity: 1; }
+    @keyframes dash { to { stroke-dashoffset: -30; } }
+    .callout { position: absolute; right: 24px; bottom: 22px; width: 320px; background: #171713; color: white; border-radius: 8px; padding: 15px; opacity: 0; transform: translateY(12px); transition: .25s ease; }
+    .callout.show { opacity: 1; transform: translateY(0); }
+    .callout p { color: rgba(255,255,255,.72); font-size: 13px; }
+    @media (max-width: 980px) { .hero, .story, .guide, .workspace, .lab-grid { grid-template-columns: 1fr; } .cards { grid-template-columns: 1fr; } .viz { overflow-x: auto; } .lab-head { display: block; } .legend { margin-top: 12px; } }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Little Book of Pipelines</h1>
+      <p>A pattern for pipelines with too many upstream sources: group sources, normalize them to one shared schema, and keep a small “book” of metadata that makes jobs, data quality, and backfills easier to reason about.</p>
+    </div>
+    <div class="metric-grid">
+      <div class="metric"><b>10+</b><span>upstream sources</span></div>
+      <div class="metric"><b>1</b><span>shared schema</span></div>
+      <div class="metric"><b>N</b><span>simple group jobs</span></div>
+    </div>
+  </section>
+
+  <section class="story">
+    <div>
+      <h2>Business Scenario</h2>
+      <p>A company has many source systems feeding one analytics domain: billing tables, CRM tables, app events, support tickets, ad platform exports, and product catalogs. Everyone wants one usable output, but each source has different columns, quality rules, and backfill behavior.</p>
+      <div class="cards">
+        <div class="mini"><b>Raw Inputs</b><span>Many unrelated upstream tables with different schemas.</span></div>
+        <div class="mini"><b>Problem</b><span>Backfills hurt because one giant pipeline owns too much logic.</span></div>
+        <div class="mini"><b>Pattern</b><span>Group sources, convert to an intermediate schema, then union/write.</span></div>
+      </div>
+    </div>
+    <div>
+      <h2>End Goal</h2>
+      <p>Create a cleaner output table and a “little book” catalog that tells the team what each group/item is, which job owns it, and what data quality rules apply.</p>
+      <div class="cards">
+        <div class="mini"><b>Output Data</b><span><code>IntermediateDataset</code>: identifier, typeName, properties, groupName.</span></div>
+        <div class="mini"><b>Output Metadata</b><span><code>ItemGroupEnum</code>: groups, items, thresholds, constants.</span></div>
+        <div class="mini"><b>Users</b><span>Data engineering, analytics, DQ dashboards, and backfill operators.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="guide">
+    <div class="guide-card"><h2>Practical Use Cases</h2><ul><li><strong>Many sources:</strong> 10+ feeds producing one domain table.</li><li><strong>Entity catalogs:</strong> customers, items, vendors, campaigns, products.</li><li><strong>DQ dashboards:</strong> metadata-driven checks per group/item.</li><li><strong>Backfills:</strong> rerun one group instead of a giant job.</li></ul></div>
+    <div class="guide-card"><h2>How It Saves Money</h2><ul><li><strong>Smaller reruns:</strong> failed group jobs can be replayed independently.</li><li><strong>Less engineer time:</strong> source ownership is visible in code.</li><li><strong>Reusable schema:</strong> downstream consumers stop handling every source shape.</li><li><strong>Faster debugging:</strong> bad item maps to one group/job.</li></ul></div>
+    <div class="guide-card"><h2>When To Use It</h2><ul><li>Many sources feed a common analytical concept.</li><li>You need clearer ownership boundaries.</li><li>Sources have different DQ thresholds or constants.</li><li>Backfills are frequent and painful.</li></ul></div>
+    <div class="guide-card"><h2>When Not To Use It</h2><ul><li>You only have one or two sources.</li><li>The sources do not share a meaningful output schema.</li><li>The metadata catalog would become fake ceremony.</li><li>You need near-real-time streaming semantics.</li></ul></div>
+  </section>
+
+  <section class="query-lab">
+    <div class="lab-head">
+      <div>
+        <h2>Postgres Query Lab: Many Sources Into One Shape</h2>
+        <p><b>Flow:</b> <code>crm_customers</code> + <code>billing_accounts</code> source tables -> <code>item_group_book</code> metadata table -> <code>intermediate_dataset</code> final shared output table.</p>
+      </div>
+      <div class="legend">
+        <span class="tag" style="--tag:var(--new)">raw source</span>
+        <span class="tag" style="--tag:var(--old)">book metadata</span>
+        <span class="tag" style="--tag:var(--changed)">normalized output</span>
+        <span class="tag" style="--tag:var(--missing)">source-specific detail</span>
+      </div>
+    </div>
+    <div class="lab-grid">
+      <div class="table-card"><h3>Before: two different source shapes</h3><table><thead><tr><th>table</th><th>id</th><th>source columns</th></tr></thead><tbody><tr class="new"><td>crm_customers</td><td>C1</td><td>plan='pro', region='US'</td></tr><tr class="new"><td>billing_accounts</td><td>B9</td><td>mrr=250, currency='USD'</td></tr></tbody></table></div>
+      <div class="table-card"><h3>Before: little book metadata</h3><table><thead><tr><th>group_name</th><th>type_name</th><th>dq_rule</th></tr></thead><tbody><tr class="oldv"><td>customer_group</td><td>crm_customer</td><td>id must exist</td></tr><tr class="oldv"><td>revenue_group</td><td>billing_account</td><td>mrr >= 0</td></tr></tbody></table></div>
+      <pre class="sql-box">-- TABLE 1: first source table.
+-- This is CRM-shaped data.
+create table crm_customers (
+    ds date,
+    customer_id text,
+    plan text,
+    region text
+);
+
+-- TABLE 2: second source table.
+-- This is billing-shaped data.
+create table billing_accounts (
+    ds date,
+    account_id text,
+    mrr numeric,
+    currency text
+);
+
+-- TABLE 3: little book metadata table.
+-- This is the catalog that says what each item means and which group owns it.
+create table item_group_book (
+    group_name text,
+    type_name text,
+    dq_rule text
+);
+
+-- TABLE 4: final shared output table.
+-- Every source gets squeezed into this same shape.
+create table intermediate_dataset (
+    identifier text,
+    type_name text,
+    properties jsonb,
+    group_name text,
+    ds date
+);
+
+-- The target table has one common shape:
+-- identifier = the thing's ID
+-- type_name = what kind of thing it is
+-- properties = extra details packed into JSON
+-- group_name = the owner bucket
+
+insert into intermediate_dataset (
+    identifier,
+    type_name,
+    properties,
+    group_name,
+    ds
+)
+
+-- First source: CRM customers.
+-- Like a 10-year-old version:
+-- "Take the CRM toy, put it into the common box shape."
+select
+    customer_id as identifier,
+    'crm_customer' as type_name,
+    jsonb_build_object(
+        'plan', plan,
+        'region', region
+    ) as properties,
+    'customer_group' as group_name,
+    date '2024-01-10' as ds
+from crm_customers
+where ds = date '2024-01-10'
+
+union all
+
+-- Second source: billing accounts.
+-- Same common box shape, even though the source columns are different.
+select
+    account_id as identifier,
+    'billing_account' as type_name,
+    jsonb_build_object(
+        'mrr', mrr,
+        'currency', currency
+    ) as properties,
+    'revenue_group' as group_name,
+    date '2024-01-10' as ds
+from billing_accounts
+where ds = date '2024-01-10';</pre>
+      <div class="table-card"><h3>After: intermediate_dataset</h3><table><thead><tr><th>identifier</th><th>type_name</th><th>properties</th><th>group_name</th></tr></thead><tbody><tr class="changed"><td>C1</td><td>crm_customer</td><td>{"plan":"pro","region":"US"}</td><td>customer_group</td></tr><tr class="changed"><td>B9</td><td>billing_account</td><td>{"mrr":250,"currency":"USD"}</td><td>revenue_group</td></tr></tbody></table></div>
+      <div class="table-card"><h3>Color Meaning</h3><table><tbody><tr class="new"><td>Green</td><td>Raw rows from different source systems.</td></tr><tr class="oldv"><td>Blue</td><td>The little book: metadata and data quality rules.</td></tr><tr class="changed"><td>Yellow</td><td>Rows transformed into one shared shape.</td></tr><tr class="missing"><td>Red</td><td>Details that only exist for one source get packed into properties.</td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <aside class="side">
+      <div class="start-card"><b>Start here</b><span>Watch how messy source tables get grouped, squeezed into one shared shape, and documented by the little book.</span></div>
+      <div id="steps"></div>
+      <div class="controls"><button class="control" id="play">Pause</button><button class="control secondary" id="next">Next Step</button></div>
+      <div class="explain"><h2 id="title"></h2><p id="text"></p></div>
+      <div class="explain"><h2>When users see results</h2><p>Usually after each scheduled group job finishes for a partition like <code>ds=2026-05-02</code>. The final table is ready when all required groups for that partition have completed.</p></div>
+    </aside>
+    <div class="viz">
+      <div class="bar"><div><span class="pill" style="--dot: var(--source)">sources</span><span class="pill" style="--dot: var(--group)">groups</span><span class="pill" style="--dot: var(--book)">little book</span><span class="pill" style="--dot: var(--output)">output</span></div></div>
+      <div class="canvas">
+        <svg viewBox="0 0 850 592">
+          <path data-min="1" d="M238 155 C260 155 265 170 285 170"></path>
+          <path data-min="1" d="M238 245 C260 245 265 232 285 232"></path>
+          <path data-min="2" d="M495 170 C520 170 520 130 540 130"></path>
+          <path data-min="2" d="M495 232 C520 232 520 176 540 176"></path>
+          <path data-min="3" d="M390 332 C390 292 390 284 390 254"></path>
+          <path data-min="4" d="M535 410 C555 410 555 420 575 420"></path>
+          <path data-min="4" d="M232 420 C390 480 478 472 575 452"></path>
+        </svg>
+        <div class="cluster sources" data-min="0"><h3>Messy sources</h3><div class="row"><b>CRM</b> customer attributes</div><div class="row"><b>Billing</b> invoices and plans</div><div class="row"><b>App</b> product usage</div><div class="row"><b>Support</b> tickets and SLA</div></div>
+        <div class="cluster groups" data-min="1"><h3>Grouped ownership</h3><div class="row"><b>GROUP_ONE</b> item_one</div><div class="row"><b>GROUP_TWO</b> item_two + item_three</div></div>
+        <div class="cluster schema" data-min="2"><h3>Shared schema</h3><div class="row"><b>identifier</b></div><div class="row"><b>typeName</b></div><div class="row"><b>properties</b> map</div><div class="row"><b>groupName</b> partition</div></div>
+        <div class="cluster book" data-min="3"><h3>Little book</h3><div class="row"><b>ItemGroupEnum</b></div><div class="row">items + thresholds</div><div class="row">one group maps to one job</div></div>
+        <div class="cluster spark" data-min="4"><h3>Group jobs</h3><div class="row">GroupOneJob</div><div class="row">GroupTwoJob</div><div class="row">BaseJob writes output</div></div>
+        <div class="cluster output" data-min="4"><h3>Clean output</h3><div class="row">one table</div><div class="row">partitioned by ds + group</div><div class="row">easier DQ + backfills</div></div>
+        <div class="callout" id="callout"><h3>Core tradeoff</h3><p>You store a little more intermediate data and metadata, but you gain cleaner ownership, easier backfills, and simpler downstream usage.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const steps = [
+  ["Many inputs", "Start with lots of upstream tables that all feed the same broad business domain."],
+  ["Group sources", "Put related sources into named groups so ownership is clean and backfills can target one group."],
+  ["Normalize schema", "Every group job writes the same shape: identifier, typeName, properties, and groupName."],
+  ["Create the little book", "The enum/catalog records group names, item names, constants, and data quality thresholds."],
+  ["Write output", "Each group has a Spark job, and the final output table becomes easier to consume and backfill."]
+];
+let step = 0, playing = true, timer;
+const stepsEl = document.querySelector("#steps"), title = document.querySelector("#title"), text = document.querySelector("#text");
+function init() {
+  stepsEl.innerHTML = steps.map((s,i)=>`<button class="step" data-step="${i}"><i>${i+1}</i><span><b>${s[0]}</b><span>${s[1]}</span></span></button>`).join("");
+  stepsEl.querySelectorAll("button").forEach(b=>b.onclick=()=>{ step=+b.dataset.step; playing=false; render(); });
+  document.querySelector("#play").onclick=()=>{ playing=!playing; render(); };
+  document.querySelector("#next").onclick=()=>{ playing=false; step=(step+1)%steps.length; render(); };
+  render();
+}
+function render() {
+  stepsEl.querySelectorAll("button").forEach(b=>b.classList.toggle("active", +b.dataset.step===step));
+  title.textContent = steps[step][0]; text.textContent = steps[step][1];
+  document.querySelector("#play").textContent = playing ? "Pause" : "Play";
+  document.querySelectorAll(".cluster").forEach(c=>{ const show=step>=+c.dataset.min; c.classList.toggle("show", show); c.classList.toggle("active", show && step===+c.dataset.min); });
+  document.querySelectorAll("path").forEach(p=>p.classList.toggle("show", step>=+p.dataset.min));
+  document.querySelector("#callout").classList.toggle("show", step>=3);
+  clearTimeout(timer); if (playing) timer=setTimeout(()=>{ step=(step+1)%steps.length; render(); }, 3600);
+}
+init();
+
+function escapeSqlHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function highlightSql(value) {
+  const tokenPattern = /(--[^\n]*|'(?:''|[^'])*'|\b(?:all|and|as|create|date|from|insert|into|jsonb|numeric|select|table|text|union|where)\b|\b\d+\b)/gi;
+  let output = "";
+  let lastIndex = 0;
+  for (const match of value.matchAll(tokenPattern)) {
+    output += escapeSqlHtml(value.slice(lastIndex, match.index));
+    const token = match[0];
+    if (token.startsWith("--")) {
+      output += `<span class="sql-comment">${escapeSqlHtml(token)}</span>`;
+    } else if (token.startsWith("'")) {
+      output += `<span class="sql-string">${escapeSqlHtml(token)}</span>`;
+    } else if (/^\d+$/.test(token)) {
+      output += `<span class="sql-number">${token}</span>`;
+    } else {
+      output += `<span class="sql-keyword">${escapeSqlHtml(token)}</span>`;
+    }
+    lastIndex = match.index + token.length;
+  }
+  output += escapeSqlHtml(value.slice(lastIndex));
+  return output;
+}
+
+document.querySelectorAll(".sql-box").forEach((block) => {
+  block.innerHTML = highlightSql(block.textContent);
+});
+</script>
+</body>
+</html>

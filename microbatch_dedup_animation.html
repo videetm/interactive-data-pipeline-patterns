@@ -1,0 +1,1397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microbatch Hourly Deduped</title>
+  <style>
+    :root {
+      --bg: #10120f;
+      --panel: #f4f1e8;
+      --panel-2: #e6e0d0;
+      --ink: #171713;
+      --muted: #6f6a5d;
+      --line: rgba(23, 23, 19, 0.16);
+      --raw: #2f6df6;
+      --dedupe: #079669;
+      --merge: #d97706;
+      --final: #8b5cf6;
+      --bad: #dc2626;
+      --glow: rgba(255, 255, 255, 0.18);
+      --new: #dcfce7;
+      --old: #e0e7ff;
+      --changed: #fef3c7;
+      --missing: #fee2e2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(47, 109, 246, 0.28), transparent 28%),
+        radial-gradient(circle at 86% 18%, rgba(139, 92, 246, 0.22), transparent 30%),
+        linear-gradient(135deg, #10120f 0%, #1b1c18 50%, #141713 100%);
+      overflow-x: hidden;
+    }
+
+    main {
+      width: min(1240px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 34px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero {
+      order: 0;
+      color: white;
+      min-height: 150px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: 0.96;
+      letter-spacing: 0;
+      max-width: 820px;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 740px;
+      color: rgba(255,255,255,0.76);
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat {
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 13px;
+      backdrop-filter: blur(18px);
+    }
+
+    .stat b {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.68);
+    }
+
+    .use-case {
+      order: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .story {
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.24);
+      padding: 20px;
+    }
+
+    .story h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    .story p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.48;
+    }
+
+    .story-grid {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .story-card {
+      border: 1px solid var(--line);
+      background: #fffdf7;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .story-card b {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .story-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .goal {
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: #171713;
+      color: white;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.24);
+      padding: 20px;
+    }
+
+    .goal h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    .goal p {
+      color: rgba(255,255,255,0.72);
+      margin: 0;
+      line-height: 1.48;
+    }
+
+    .goal-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .goal-item {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 9px;
+      align-items: start;
+      color: rgba(255,255,255,0.82);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .goal-item i {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      color: white;
+      font-style: normal;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .workspace {
+      order: 1;
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .decision-guide {
+      order: 3;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .guide-card {
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+      padding: 18px;
+      min-height: 230px;
+    }
+
+    .guide-card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .guide-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.42;
+      font-size: 13px;
+    }
+
+    .guide-card li + li {
+      margin-top: 8px;
+    }
+
+    .guide-card strong {
+      color: var(--ink);
+    }
+
+    .panel {
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.34);
+    }
+
+    .sidebar {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .stage-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .stage-button {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf7;
+      color: var(--ink);
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .stage-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 23, 19, 0.34);
+    }
+
+    .stage-button.active {
+      background: #171713;
+      color: white;
+      border-color: #171713;
+    }
+
+    .stage-button i {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--panel-2);
+      font-style: normal;
+      font-weight: 900;
+    }
+
+    .stage-button.active i {
+      background: rgba(255,255,255,0.16);
+    }
+
+    .stage-button b {
+      display: block;
+      font-size: 14px;
+    }
+
+    .stage-button span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .stage-button.active span {
+      color: rgba(255,255,255,0.68);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button.control {
+      border: 1px solid #171713;
+      background: #171713;
+      color: white;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    button.control.secondary {
+      background: transparent;
+      color: #171713;
+    }
+
+    .explain {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .explain h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .explain p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.46;
+      font-size: 14px;
+    }
+
+    .viz {
+      overflow: hidden;
+      min-height: 650px;
+      position: relative;
+      background:
+        linear-gradient(90deg, rgba(23,23,19,0.05) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(23,23,19,0.05) 1px, transparent 1px),
+        #f8f6ef;
+      background-size: 42px 42px;
+    }
+
+    .topbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.55);
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fffdf7;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--dot);
+    }
+
+    .speed {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      accent-color: #171713;
+      width: 120px;
+    }
+
+    .diagram {
+      position: relative;
+      height: 592px;
+      padding: 24px 18px 18px;
+    }
+
+    .lane-title {
+      position: absolute;
+      top: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .lane-title.raw-title { left: 36px; }
+    .lane-title.hourly-title { left: 274px; }
+    .lane-title.merge-title { left: 518px; }
+    .lane-title.final-title { right: 48px; }
+
+    .hour-grid {
+      position: absolute;
+      left: 30px;
+      top: 64px;
+      width: 172px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .hour {
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid rgba(47,109,246,0.28);
+      background: rgba(47,109,246,0.12);
+      color: #1e3a8a;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      cursor: pointer;
+      position: relative;
+      transition: transform 180ms ease, opacity 180ms ease, background 180ms ease;
+    }
+
+    .hour:hover { transform: scale(1.07); }
+
+    .hour.dim { opacity: 0.28; }
+
+    .hour.selected {
+      background: var(--raw);
+      color: white;
+      box-shadow: 0 0 0 5px rgba(47,109,246,0.16);
+    }
+
+    .event-drawer {
+      position: absolute;
+      left: 30px;
+      bottom: 24px;
+      width: 216px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf7;
+      padding: 12px;
+    }
+
+    .event-drawer b {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .event-row {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 6px 0;
+    }
+
+    .event-row i {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--raw);
+    }
+
+    .nodes {
+      position: absolute;
+      inset: 64px 24px 26px 246px;
+    }
+
+    .node {
+      position: absolute;
+      width: 150px;
+      min-height: 62px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf7;
+      padding: 10px;
+      box-shadow: 0 10px 22px rgba(31, 27, 18, 0.08);
+      opacity: 0.18;
+      transform: translateY(8px) scale(0.98);
+      transition: opacity 280ms ease, transform 280ms ease, box-shadow 280ms ease;
+    }
+
+    .node.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .node.active {
+      box-shadow: 0 0 0 5px rgba(217,119,6,0.13), 0 18px 34px rgba(31,27,18,0.14);
+    }
+
+    .node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 5px;
+      border-radius: 8px 8px 0 0;
+      background: var(--color);
+    }
+
+    .node b {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .node span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .node .chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 7px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      background: rgba(23,23,19,0.08);
+      color: #3f3a31;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    svg.wires {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .wire {
+      fill: none;
+      stroke: rgba(23,23,19,0.18);
+      stroke-width: 2;
+      stroke-dasharray: 6 7;
+      opacity: 0;
+      transition: opacity 260ms ease;
+    }
+
+    .wire.show {
+      opacity: 1;
+      animation: dash 1.2s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -26; }
+    }
+
+    .token {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      background: var(--merge);
+      box-shadow: 0 0 0 7px rgba(217,119,6,0.16);
+      opacity: 0;
+      z-index: 5;
+    }
+
+    .token.fly {
+      animation: fly 1800ms ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+
+    @keyframes fly {
+      0% { transform: translate(var(--sx), var(--sy)) scale(0.7); opacity: 0; }
+      12% { opacity: 1; }
+      78% { opacity: 1; }
+      100% { transform: translate(var(--ex), var(--ey)) scale(1.05); opacity: 0; }
+    }
+
+    .dupe-callout {
+      position: absolute;
+      right: 32px;
+      bottom: 28px;
+      width: 310px;
+      border-radius: 8px;
+      background: #171713;
+      color: white;
+      padding: 16px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 250ms ease, transform 250ms ease;
+    }
+
+    .dupe-callout.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .dupe-callout b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .dupe-callout p {
+      margin: 0;
+      color: rgba(255,255,255,0.72);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .formula {
+      margin-top: 16px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.88);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .query-lab {
+      order: 4;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .lab-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .lab-head h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fffdf7;
+      border-radius: 999px;
+      padding: 6px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tag::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--tag);
+    }
+
+    .lab-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .sql-box {
+      grid-column: 1 / -1;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .sql-keyword { color: #93c5fd; font-weight: 800; }
+    .sql-string { color: #86efac; }
+    .sql-comment { color: #9ca3af; font-style: italic; }
+    .sql-number { color: #fbbf24; }
+
+    .table-card {
+      border: 1px solid var(--line);
+      background: #fffdf7;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    .table-card h3 {
+      margin: 0;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    th { background: #f1eadb; }
+
+    td {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .new { background: var(--new); }
+    .oldv { background: var(--old); }
+    .changed { background: var(--changed); }
+    .missing { background: var(--missing); }
+
+    .start-card {
+      border: 1px solid var(--line);
+      background: #171713;
+      color: white;
+      border-radius: 8px;
+      padding: 13px;
+    }
+
+    .start-card b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .start-card span {
+      display: block;
+      color: rgba(255,255,255,0.72);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    @media (max-width: 980px) {
+      .hero, .workspace, .use-case, .decision-guide, .lab-grid { grid-template-columns: 1fr; }
+      .story-grid { grid-template-columns: 1fr; }
+      .stat-strip { max-width: 420px; }
+      .viz { overflow-x: auto; }
+      .diagram { min-width: 860px; }
+      .lab-head { display: block; }
+      .legend { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Hourly dedupe as a merge bracket</h1>
+      <p>Watch raw hourly partitions become compact hourly facts, then merge in rounds until the day has one clean deduped output.</p>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><b>24</b><span>hourly microbatches</span></div>
+      <div class="stat"><b>2x</b><span>pairwise merge fan-in</span></div>
+      <div class="stat"><b>1</b><span>daily deduped table</span></div>
+    </div>
+  </section>
+
+  <section class="use-case">
+    <div class="story">
+      <h2>Business Scenario</h2>
+      <p>
+        Imagine an ecommerce company tracking product events from both the website and mobile app:
+        product views, clicks, add-to-cart events, purchases, and checkout retries. Event collectors,
+        mobile retries, and late network delivery can send the same business event more than once.
+      </p>
+      <div class="story-grid">
+        <div class="story-card">
+          <b>Raw Data</b>
+          <span><code>event_source</code>: one row per event, partitioned by date, hour, and product_name.</span>
+        </div>
+        <div class="story-card">
+          <b>Duplicate Problem</b>
+          <span>The same product/event can appear twice inside one hour or again in the next hour.</span>
+        </div>
+        <div class="story-card">
+          <b>Why Hourly</b>
+          <span>The business wants fresh daily numbers before all 24 hours are processed at once.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="goal">
+      <h2>End Goal</h2>
+      <p>
+        Produce one clean daily table that analytics, ML, and reporting teams can trust without
+        scanning the full raw firehose repeatedly.
+      </p>
+      <div class="goal-list">
+        <div class="goal-item"><i>1</i><span>Deduped daily product events in <code>deduped_source</code>.</span></div>
+        <div class="goal-item"><i>2</i><span>Lower latency because each hour can be processed as soon as it lands.</span></div>
+        <div class="goal-item"><i>3</i><span>Less compute because merge rounds read compact deduped data, not raw events.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="decision-guide">
+    <div class="guide-card">
+      <h2>Practical Use Cases</h2>
+      <ul>
+        <li><strong>Product analytics:</strong> dedupe product views, clicks, add-to-cart, and purchase events.</li>
+        <li><strong>Ad tech:</strong> dedupe impressions and clicks before attribution or billing.</li>
+        <li><strong>Fraud/risk:</strong> process fresh event streams without double-counting retries.</li>
+        <li><strong>IoT/logs:</strong> compact repeated device pings or telemetry events by hour.</li>
+      </ul>
+    </div>
+
+    <div class="guide-card">
+      <h2>How It Saves Money</h2>
+      <ul>
+        <li><strong>Less raw scanning:</strong> later merges read compact hourly outputs instead of full raw data.</li>
+        <li><strong>Parallel work:</strong> hour 1 and hour 2 can dedupe while later hours are still arriving.</li>
+        <li><strong>Smaller retries:</strong> if one hour fails, rerun that small partition, not the whole day.</li>
+        <li><strong>Cheaper downstream:</strong> reports and ML jobs read one clean daily table.</li>
+      </ul>
+    </div>
+
+    <div class="guide-card">
+      <h2>When To Use It</h2>
+      <ul>
+        <li>Your raw event volume is large enough that daily full scans are expensive.</li>
+        <li>Duplicates can appear inside one hour and across nearby hours.</li>
+        <li>The business wants fresher daily data before a giant end-of-day batch finishes.</li>
+        <li>You have a reliable dedupe key such as event_id, order_id, request_id, or a strong composite key.</li>
+      </ul>
+    </div>
+
+    <div class="guide-card">
+      <h2>When Not To Use It</h2>
+      <ul>
+        <li>Your data is small and a simple daily dedupe is cheap enough.</li>
+        <li>You cannot define what makes two events the same real-world action.</li>
+        <li>Duplicates can arrive many days late and your merge window is only hourly/same-day.</li>
+        <li>Your team does not need lower latency and would prefer a simpler batch job.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="query-lab">
+    <div class="lab-head">
+      <div>
+        <h2>Postgres Query Lab: Hourly Dedupe + Merge</h2>
+        <p><b>Flow:</b> <code>event_source</code> raw table -> <code>hourly_deduped_source</code> hourly intermediate table -> same <code>hourly_deduped_source</code> merge partitions -> final daily table <code>deduped_source</code>.</p>
+      </div>
+      <div class="legend">
+        <span class="tag" style="--tag:var(--new)">raw hourly rows</span>
+        <span class="tag" style="--tag:var(--old)">already deduped</span>
+        <span class="tag" style="--tag:var(--changed)">merged survivor</span>
+        <span class="tag" style="--tag:var(--missing)">only one side</span>
+      </div>
+    </div>
+    <div class="lab-grid">
+      <div class="table-card"><h3>Before: event_source</h3><table><thead><tr><th>hour</th><th>product_id</th><th>event_type</th><th>location</th><th>ts</th></tr></thead><tbody><tr class="new"><td>1</td><td>10</td><td>view</td><td>home</td><td>101</td></tr><tr class="new"><td>1</td><td>10</td><td>view</td><td>home_retry</td><td>102</td></tr><tr class="new"><td>2</td><td>10</td><td>view</td><td>late_retry</td><td>108</td></tr><tr class="new"><td>2</td><td>20</td><td>click</td><td>pdp</td><td>120</td></tr></tbody></table></div>
+      <div class="table-card"><h3>Before Merge: hourly_deduped_source</h3><table><thead><tr><th>hour</th><th>product_id</th><th>event_type</th><th>min_ts</th><th>max_ts</th></tr></thead><tbody><tr class="oldv"><td>1</td><td>10</td><td>view</td><td>101</td><td>102</td></tr><tr class="oldv"><td>2</td><td>10</td><td>view</td><td>108</td><td>108</td></tr><tr class="oldv"><td>2</td><td>20</td><td>click</td><td>120</td><td>120</td></tr></tbody></table></div>
+      <pre class="sql-box">-- TABLE 1: source table.
+-- This is the messy raw event pile, partitioned by day/hour/product.
+create table event_source (
+    ds date,
+    hour integer,
+    product_name text,
+    product_id bigint,
+    event_type text,
+    event_timestamp_epoch bigint,
+    event_location text
+);
+
+-- TABLE 2: hourly intermediate table.
+-- First it stores each cleaned hour.
+-- Later it also stores merge partitions like hour = 12, meaning "hours 1 through 2".
+create table hourly_deduped_source (
+    ds date,
+    hour integer,
+    product_name text,
+    product_id bigint,
+    event_type text,
+    min_event_timestamp_epoch bigint,
+    max_event_timestamp_epoch bigint,
+    event_locations jsonb
+);
+
+-- TABLE 3: final daily output table.
+-- This is what downstream dashboards/jobs should read for the full day.
+create table deduped_source (
+    ds date,
+    product_name text,
+    product_id bigint,
+    event_type text,
+    min_event_timestamp_epoch bigint,
+    max_event_timestamp_epoch bigint,
+    event_locations jsonb
+);
+
+-- Query 1: dedupe one hour.
+-- Like a 10-year-old version:
+-- "Put the same product/event rows into one bucket for this hour."
+insert into hourly_deduped_source (
+    ds, hour, product_name,
+    product_id, event_type,
+    min_event_timestamp_epoch, max_event_timestamp_epoch,
+    event_locations
+)
+select
+    ds,
+    hour,
+    product_name,
+    product_id,
+    event_type,
+    min(event_timestamp_epoch) as min_event_timestamp_epoch, -- earliest time we saw it
+    max(event_timestamp_epoch) as max_event_timestamp_epoch, -- latest time we saw it
+    jsonb_object_agg(event_location, event_timestamp_epoch) as event_locations -- keep location clues
+from event_source
+where ds = date '2024-01-10'
+  and hour = 1
+  and product_name = 'website'
+group by ds, hour, product_name, product_id, event_type;
+
+-- Query 2: merge hour 1 and hour 2.
+-- FULL OUTER JOIN means:
+-- keep rows only in hour 1, only in hour 2, and rows in both.
+with earlier as (
+    select * from hourly_deduped_source
+    where ds = date '2024-01-10' and hour = 1 and product_name = 'website'
+),
+later as (
+    select * from hourly_deduped_source
+    where ds = date '2024-01-10' and hour = 2 and product_name = 'website'
+)
+insert into hourly_deduped_source (
+    ds, hour, product_name,
+    product_id, event_type,
+    min_event_timestamp_epoch, max_event_timestamp_epoch,
+    event_locations
+)
+select
+    date '2024-01-10' as ds,
+    12 as hour, -- pretend this partition means "merged hours 1 through 2"
+    'website' as product_name,
+    coalesce(e.product_id, l.product_id) as product_id,
+    coalesce(e.event_type, l.event_type) as event_type,
+    least(coalesce(e.min_event_timestamp_epoch, l.min_event_timestamp_epoch),
+          coalesce(l.min_event_timestamp_epoch, e.min_event_timestamp_epoch)) as min_event_timestamp_epoch,
+    greatest(coalesce(e.max_event_timestamp_epoch, l.max_event_timestamp_epoch),
+             coalesce(l.max_event_timestamp_epoch, e.max_event_timestamp_epoch)) as max_event_timestamp_epoch,
+    coalesce(e.event_locations, '{}'::jsonb) || coalesce(l.event_locations, '{}'::jsonb) as event_locations
+from earlier e
+full outer join later l
+    on e.product_id = l.product_id
+   and e.event_type = l.event_type;</pre>
+      <pre class="sql-box">-- Final step after all 24 hours have been merged.
+-- Copy the final merge partition into the final daily table.
+-- Like a 10-year-old version:
+-- "Take the cleaned whole-day box and put it on the shelf for everyone to use."
+insert into deduped_source (
+    ds,
+    product_name,
+    product_id,
+    event_type,
+    min_event_timestamp_epoch,
+    max_event_timestamp_epoch,
+    event_locations
+)
+select
+    ds,
+    product_name,
+    product_id,
+    event_type,
+    min_event_timestamp_epoch,
+    max_event_timestamp_epoch,
+    event_locations
+from hourly_deduped_source
+where ds = date '2024-01-10'
+  and hour = 124 -- pretend this means "merged hours 1 through 24"
+  and product_name = 'website';</pre>
+      <div class="table-card"><h3>After: merged hours 1-2</h3><table><thead><tr><th>hour</th><th>product_id</th><th>event_type</th><th>what changed</th><th>min_ts</th><th>max_ts</th></tr></thead><tbody><tr class="changed"><td>12</td><td>10</td><td>view</td><td>duplicate across hours collapsed</td><td>101</td><td>108</td></tr><tr class="missing"><td>12</td><td>20</td><td>click</td><td>only existed in hour 2, kept</td><td>120</td><td>120</td></tr></tbody></table></div>
+      <div class="table-card"><h3>Color Meaning</h3><table><tbody><tr class="new"><td>Green</td><td>Raw hourly rows before cleanup.</td></tr><tr class="oldv"><td>Blue</td><td>Already deduped hourly rows.</td></tr><tr class="changed"><td>Yellow</td><td>Two duplicate rows became one survivor.</td></tr><tr class="missing"><td>Red</td><td>No match on one side, but FULL OUTER JOIN keeps it.</td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <aside class="panel sidebar">
+      <div class="start-card"><b>Start here</b><span>Watch the animation first. The only idea to catch: raw hourly data becomes clean hourly data, then clean hours merge into one daily output.</span></div>
+      <div class="stage-list" id="stageList"></div>
+      <div class="controls">
+        <button class="control" id="play">Pause</button>
+        <button class="control secondary" id="next">Next Step</button>
+      </div>
+      <div class="explain">
+        <h2 id="explainTitle"></h2>
+        <p id="explainText"></p>
+      </div>
+      <div class="explain">
+        <h2>Tables In This Pattern</h2>
+        <p><b>event_source</b> is the raw hourly input. <b>hourly_deduped_source</b> is the reusable intermediate table. <b>deduped_source</b> is the final daily output.</p>
+      </div>
+    </aside>
+
+    <div class="panel viz">
+      <div class="topbar">
+        <div class="pill-row">
+          <span class="pill" style="--dot: var(--raw)">event_source</span>
+          <span class="pill" style="--dot: var(--dedupe)">hourly_deduped_source</span>
+          <span class="pill" style="--dot: var(--merge)">FULL OUTER JOIN merges</span>
+          <span class="pill" style="--dot: var(--final)">deduped_source</span>
+        </div>
+        <label class="speed">Speed <input id="speed" type="range" min="1200" max="5200" value="3200"></label>
+      </div>
+
+      <div class="diagram">
+        <div class="lane-title raw-title">Raw hours</div>
+        <div class="lane-title hourly-title">Hourly dedupe</div>
+        <div class="lane-title merge-title">Merge rounds</div>
+        <div class="lane-title final-title">Daily output</div>
+
+        <div class="hour-grid" id="hourGrid"></div>
+        <div class="event-drawer" id="eventDrawer"></div>
+
+        <div class="nodes" id="nodes">
+          <svg class="wires" viewBox="0 0 650 500" preserveAspectRatio="none" id="wires"></svg>
+          <div class="token" id="tokenA"></div>
+          <div class="token" id="tokenB"></div>
+          <div class="token" id="tokenC"></div>
+        </div>
+
+        <div class="dupe-callout" id="callout">
+          <b>Why not only dedupe each hour?</b>
+          <p>The same product/event key can appear in hour 1 and hour 2. The merge rounds dedupe across hour boundaries without waiting to scan the whole day at once.</p>
+          <div class="formula">deduped(1-24) = merge(merge(1-16), merge(17-24))</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const stages = [
+  {
+    title: "Raw events land hourly",
+    short: "24 partitions arrive during the day.",
+    text: "The source table is event_source. It is partitioned by date, hour, and product_name. Each hour can contain duplicate product/event rows.",
+    level: 0
+  },
+  {
+    title: "Dedupe inside each hour",
+    short: "GROUP BY compacts every hour.",
+    text: "Each hour is grouped by product_id and event_type. The output goes to hourly_deduped_source with min/max timestamps and a map of locations.",
+    level: 1
+  },
+  {
+    title: "Merge nearby hours",
+    short: "1+2, 3+4, 5+6...",
+    text: "Pairwise FULL OUTER JOINs combine adjacent deduped hours. This catches duplicates that crossed an hour boundary.",
+    level: 2
+  },
+  {
+    title: "Merge bigger windows",
+    short: "1-4, 5-8, 9-16...",
+    text: "The merged outputs become inputs to the next round. Each round reads smaller deduped data, not the raw firehose.",
+    level: 3
+  },
+  {
+    title: "Write final daily table",
+    short: "One deduped day remains.",
+    text: "The last merge writes deduped_source partitioned by date and product_name. This is the clean daily table downstream jobs can read.",
+    level: 4
+  }
+];
+
+const sampleEvents = {
+  1: ["P10 view", "P10 view duplicate", "P11 click", "P12 buy"],
+  2: ["P10 view duplicate", "P13 view", "P14 click"],
+  3: ["P20 view", "P21 view", "P21 view duplicate"],
+  4: ["P20 view duplicate", "P22 click"],
+  8: ["P70 click", "P71 view", "P71 view duplicate"],
+  16: ["P90 view", "P91 buy"],
+  24: ["P99 view", "P99 view duplicate", "P10 view late"]
+};
+
+const graphNodes = [
+  { id: "h1", label: "h1", sub: "deduped hour", x: 24, y: 18, color: "var(--dedupe)", chips: ["P10", "P11"] , min: 1 },
+  { id: "h2", label: "h2", sub: "deduped hour", x: 24, y: 92, color: "var(--dedupe)", chips: ["P10", "P13"], min: 1 },
+  { id: "h3", label: "h3", sub: "deduped hour", x: 24, y: 166, color: "var(--dedupe)", chips: ["P20", "P21"], min: 1 },
+  { id: "h4", label: "h4", sub: "deduped hour", x: 24, y: 240, color: "var(--dedupe)", chips: ["P20", "P22"], min: 1 },
+  { id: "h17", label: "h17-24", sub: "late-day chunk", x: 24, y: 334, color: "var(--dedupe)", chips: ["P99", "P10"], min: 1 },
+  { id: "m12", label: "1-2", sub: "FULL OUTER JOIN", x: 220, y: 52, color: "var(--merge)", chips: ["P10 once", "P13"], min: 2 },
+  { id: "m34", label: "3-4", sub: "FULL OUTER JOIN", x: 220, y: 206, color: "var(--merge)", chips: ["P20 once", "P22"], min: 2 },
+  { id: "m14", label: "1-4", sub: "merged window", x: 392, y: 126, color: "var(--merge)", chips: ["P10", "P20"], min: 3 },
+  { id: "m116", label: "1-16", sub: "bigger window", x: 392, y: 286, color: "var(--merge)", chips: ["compact"], min: 3 },
+  { id: "final", label: "deduped_source", sub: "daily partition", x: 548, y: 202, color: "var(--final)", chips: ["1 clean day"], min: 4 }
+];
+
+const edges = [
+  ["h1", "m12", 2], ["h2", "m12", 2],
+  ["h3", "m34", 2], ["h4", "m34", 2],
+  ["m12", "m14", 3], ["m34", "m14", 3],
+  ["m14", "m116", 3], ["h17", "final", 4],
+  ["m116", "final", 4]
+];
+
+let stage = 0;
+let playing = true;
+let selectedHour = 1;
+let timer = null;
+
+const stageList = document.querySelector("#stageList");
+const explainTitle = document.querySelector("#explainTitle");
+const explainText = document.querySelector("#explainText");
+const play = document.querySelector("#play");
+const next = document.querySelector("#next");
+const speed = document.querySelector("#speed");
+const hourGrid = document.querySelector("#hourGrid");
+const eventDrawer = document.querySelector("#eventDrawer");
+const nodesEl = document.querySelector("#nodes");
+const wires = document.querySelector("#wires");
+const callout = document.querySelector("#callout");
+
+function initStages() {
+  stageList.innerHTML = stages.map((item, index) => `
+    <button class="stage-button" data-stage="${index}">
+      <i>${index + 1}</i>
+      <span><b>${item.title}</b><span>${item.short}</span></span>
+    </button>
+  `).join("");
+
+  stageList.querySelectorAll("button").forEach(button => {
+    button.addEventListener("click", () => {
+      stage = Number(button.dataset.stage);
+      playing = false;
+      render();
+    });
+  });
+}
+
+function initHours() {
+  hourGrid.innerHTML = Array.from({ length: 24 }, (_, i) => {
+    const hour = i + 1;
+    return `<button class="hour" data-hour="${hour}">${hour}</button>`;
+  }).join("");
+
+  hourGrid.querySelectorAll(".hour").forEach(button => {
+    button.addEventListener("click", () => {
+      selectedHour = Number(button.dataset.hour);
+      renderHours();
+      renderDrawer();
+    });
+  });
+}
+
+function initGraph() {
+  graphNodes.forEach(node => {
+    const div = document.createElement("div");
+    div.className = "node";
+    div.id = `node-${node.id}`;
+    div.style.left = `${node.x}px`;
+    div.style.top = `${node.y}px`;
+    div.style.setProperty("--color", node.color);
+    div.innerHTML = `
+      <b>${node.label}</b>
+      <span>${node.sub}</span>
+      <div class="chips">${node.chips.map(chip => `<span class="chip">${chip}</span>`).join("")}</div>
+    `;
+    nodesEl.appendChild(div);
+  });
+
+  edges.forEach(([from, to, min], index) => {
+    const a = graphNodes.find(node => node.id === from);
+    const b = graphNodes.find(node => node.id === to);
+    const x1 = a.x + 150;
+    const y1 = a.y + 31;
+    const x2 = b.x;
+    const y2 = b.y + 31;
+    const mid = x1 + ((x2 - x1) * 0.55);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`);
+    path.setAttribute("class", "wire");
+    path.dataset.min = min;
+    path.dataset.index = index;
+    wires.appendChild(path);
+  });
+}
+
+function renderHours() {
+  hourGrid.querySelectorAll(".hour").forEach(button => {
+    const hour = Number(button.dataset.hour);
+    button.classList.toggle("selected", hour === selectedHour);
+    button.classList.toggle("dim", stage > 1 && ![1,2,3,4,17,24].includes(hour));
+  });
+}
+
+function renderDrawer() {
+  const rows = sampleEvents[selectedHour] || [
+    `P${selectedHour * 3} view`,
+    `P${selectedHour * 3 + 1} click`,
+    `P${selectedHour * 3 + 2} view`
+  ];
+
+  eventDrawer.innerHTML = `
+    <b>event_source hour ${selectedHour}</b>
+    ${rows.map((row, index) => `
+      <div class="event-row">
+        <i style="background:${row.includes("duplicate") ? "var(--bad)" : "var(--raw)"}"></i>
+        <span>${row}</span>
+      </div>
+    `).join("")}
+  `;
+}
+
+function renderGraph() {
+  graphNodes.forEach(node => {
+    const el = document.querySelector(`#node-${node.id}`);
+    const show = stage >= node.min;
+    el.classList.toggle("show", show);
+    el.classList.toggle("active", show && stage === node.min);
+  });
+
+  document.querySelectorAll(".wire").forEach(path => {
+    path.classList.toggle("show", stage >= Number(path.dataset.min));
+  });
+
+  callout.classList.toggle("show", stage >= 2);
+
+  const tokens = [
+    { id: "tokenA", sx: "12px", sy: "92px", ex: "220px", ey: "83px", delay: "0ms" },
+    { id: "tokenB", sx: "12px", sy: "240px", ex: "220px", ey: "237px", delay: "450ms" },
+    { id: "tokenC", sx: "392px", sy: "157px", ex: "548px", ey: "233px", delay: "900ms" }
+  ];
+
+  tokens.forEach(token => {
+    const el = document.querySelector(`#${token.id}`);
+    el.style.setProperty("--sx", token.sx);
+    el.style.setProperty("--sy", token.sy);
+    el.style.setProperty("--ex", token.ex);
+    el.style.setProperty("--ey", token.ey);
+    el.style.setProperty("--delay", token.delay);
+    el.classList.toggle("fly", stage >= 2);
+  });
+}
+
+function renderStages() {
+  stageList.querySelectorAll("button").forEach(button => {
+    button.classList.toggle("active", Number(button.dataset.stage) === stage);
+  });
+
+  explainTitle.textContent = stages[stage].title;
+  explainText.textContent = stages[stage].text;
+  play.textContent = playing ? "Pause" : "Play";
+}
+
+function render() {
+  renderStages();
+  renderHours();
+  renderDrawer();
+  renderGraph();
+  schedule();
+}
+
+function schedule() {
+  clearTimeout(timer);
+  if (!playing) return;
+  timer = setTimeout(() => {
+    stage = (stage + 1) % stages.length;
+    render();
+  }, Number(speed.value));
+}
+
+play.addEventListener("click", () => {
+  playing = !playing;
+  render();
+});
+
+next.addEventListener("click", () => {
+  playing = false;
+  stage = (stage + 1) % stages.length;
+  render();
+});
+
+speed.addEventListener("input", schedule);
+
+initStages();
+initHours();
+initGraph();
+render();
+
+function escapeSqlHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function highlightSql(value) {
+  const tokenPattern = /(--[^\n]*|'(?:''|[^'])*'|\b(?:and|array|as|bigint|case|coalesce|create|date|from|full|greatest|group|insert|integer|into|join|jsonb|least|max|min|numeric|on|or|outer|select|table|text|where|with|values)\b|\b\d+\b)/gi;
+  let output = "";
+  let lastIndex = 0;
+  for (const match of value.matchAll(tokenPattern)) {
+    output += escapeSqlHtml(value.slice(lastIndex, match.index));
+    const token = match[0];
+    if (token.startsWith("--")) {
+      output += `<span class="sql-comment">${escapeSqlHtml(token)}</span>`;
+    } else if (token.startsWith("'")) {
+      output += `<span class="sql-string">${escapeSqlHtml(token)}</span>`;
+    } else if (/^\d+$/.test(token)) {
+      output += `<span class="sql-number">${token}</span>`;
+    } else {
+      output += `<span class="sql-keyword">${escapeSqlHtml(token)}</span>`;
+    }
+    lastIndex = match.index + token.length;
+  }
+  output += escapeSqlHtml(value.slice(lastIndex));
+  return output;
+}
+
+document.querySelectorAll(".sql-box").forEach((block) => {
+  block.innerHTML = highlightSql(block.textContent);
+});
+</script>
+</body>
+</html>
