@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Growth Product Analytics SQL Patterns</title>
+  <style>
+    :root {
+      --bg: #10120f;
+      --panel: #f5f1e7;
+      --ink: #171713;
+      --muted: #6d675b;
+      --line: rgba(23, 23, 19, .16);
+      --acq: #2563eb;
+      --act: #0f766e;
+      --ret: #b45309;
+      --rev: #7c3aed;
+      --new: #dcfce7;
+      --old: #e0e7ff;
+      --changed: #fef3c7;
+      --missing: #fee2e2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 12%, rgba(37,99,235,.26), transparent 28%),
+        radial-gradient(circle at 84% 16%, rgba(124,58,237,.25), transparent 30%),
+        #10120f;
+    }
+
+    main {
+      width: min(1240px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 30px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero {
+      order: 0;
+      color: white;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 22px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: .96;
+      max-width: 860px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255,255,255,.75);
+      font-size: 17px;
+      line-height: 1.45;
+      max-width: 780px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: white;
+      border-radius: 8px;
+      padding: 13px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 22px;
+    }
+
+    .metric span {
+      color: rgba(255,255,255,.68);
+      font-size: 12px;
+    }
+
+    .story, .guide-card, .viz, .side, .query-lab {
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    .workspace {
+      order: 1;
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .side {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .start-card {
+      border: 1px solid var(--line);
+      background: #171713;
+      color: white;
+      border-radius: 8px;
+      padding: 13px;
+    }
+
+    .start-card b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .start-card span {
+      display: block;
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    .step {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      text-align: left;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .step i {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #e7dfcd;
+      font-style: normal;
+      font-weight: 900;
+    }
+
+    .step b {
+      display: block;
+      font-size: 14px;
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .step.active {
+      background: #171713;
+      color: white;
+      border-color: #171713;
+    }
+
+    .step.active span {
+      color: rgba(255,255,255,.68);
+    }
+
+    .step.active i {
+      background: rgba(255,255,255,.14);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button.control {
+      border: 1px solid #171713;
+      border-radius: 8px;
+      background: #171713;
+      color: white;
+      padding: 10px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: #171713;
+    }
+
+    .explain {
+      border-top: 1px solid var(--line);
+      padding-top: 13px;
+    }
+
+    .explain h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.47;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .viz {
+      min-height: 650px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(23,23,19,.05) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(23,23,19,.05) 1px, transparent 1px),
+        #f8f6ef;
+      background-size: 42px 42px;
+    }
+
+    .bar {
+      height: 58px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      background: rgba(255,255,255,.58);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fffdf8;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pill:before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--dot);
+    }
+
+    .canvas {
+      position: relative;
+      height: 592px;
+      min-width: 900px;
+    }
+
+    .node {
+      position: absolute;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 14px 28px rgba(23,23,19,.10);
+      opacity: .16;
+      transform: translateY(8px);
+      transition: .25s ease;
+    }
+
+    .node.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .node.active {
+      box-shadow: 0 0 0 6px rgba(180,83,9,.14), 0 20px 42px rgba(23,23,19,.15);
+    }
+
+    .node:before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 5px;
+      border-radius: 8px 8px 0 0;
+      background: var(--c);
+    }
+
+    .node h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .row {
+      border: 1px solid var(--line);
+      background: #f8f4ea;
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 7px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .row b {
+      color: var(--ink);
+    }
+
+    .source { left: 28px; top: 70px; width: 215px; --c: var(--acq); }
+    .grain { left: 300px; top: 58px; width: 230px; --c: var(--act); }
+    .active { left: 595px; top: 54px; width: 240px; --c: var(--act); }
+    .cohort { left: 58px; top: 345px; width: 230px; --c: var(--ret); }
+    .revenue { left: 340px; top: 340px; width: 240px; --c: var(--rev); }
+    .decision { left: 660px; top: 335px; width: 220px; --c: var(--rev); }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    path {
+      fill: none;
+      stroke: rgba(23,23,19,.24);
+      stroke-width: 2;
+      stroke-dasharray: 7 8;
+      opacity: 0;
+      transition: opacity .2s ease;
+      animation: dash 1.1s linear infinite;
+    }
+
+    path.show { opacity: 1; }
+
+    @keyframes dash { to { stroke-dashoffset: -30; } }
+
+    .formula {
+      position: absolute;
+      right: 24px;
+      bottom: 22px;
+      width: 340px;
+      background: #171713;
+      color: white;
+      border-radius: 8px;
+      padding: 15px;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: .25s ease;
+    }
+
+    .formula.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .formula p {
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+    }
+
+    .story {
+      order: 2;
+      padding: 20px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+    }
+
+    h2 {
+      margin: 0 0 9px;
+      font-size: 22px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .mini {
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .mini b {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .mini span, li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    .guide {
+      order: 3;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .guide-card {
+      padding: 17px;
+      min-height: 222px;
+    }
+
+    .guide-card h2 {
+      font-size: 18px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li + li { margin-top: 8px; }
+
+    strong { color: var(--ink); }
+
+    .query-lab {
+      order: 4;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .lab-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 999px;
+      padding: 6px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tag:before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--tag);
+    }
+
+    .lab-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .sql-box {
+      grid-column: 1 / -1;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .sql-keyword { color: #93c5fd; font-weight: 800; }
+    .sql-string { color: #86efac; }
+    .sql-comment { color: #9ca3af; font-style: italic; }
+    .sql-number { color: #fbbf24; }
+
+    .table-card {
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    .table-card h3 {
+      margin: 0;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    th { background: #f1eadb; }
+
+    td {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .new { background: var(--new); }
+    .oldv { background: var(--old); }
+    .changed { background: var(--changed); }
+    .missing { background: var(--missing); }
+
+    @media (max-width: 980px) {
+      .hero, .workspace, .story, .guide, .lab-grid { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+      .viz { overflow-x: auto; }
+      .lab-head { display: block; }
+      .legend { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Growth Product Analytics SQL Patterns</h1>
+      <p>Interactive guide to the metrics product teams actually use: DAU, MAU, stickiness, funnels, retention, LTV, CAC, cumulative transaction value, and payback.</p>
+    </div>
+    <div class="metric-grid">
+      <div class="metric"><b>Users</b><span>activation, retention, churn</span></div>
+      <div class="metric"><b>Revenue</b><span>LTV, ARPU, CTV</span></div>
+      <div class="metric"><b>Growth</b><span>CAC, payback, channel ROI</span></div>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <aside class="side">
+      <div class="start-card"><b>Start here</b><span>Watch raw user, event, order, and spend data turn into product decisions: who came, who stayed, who paid, and which channels are worth scaling.</span></div>
+      <div id="steps"></div>
+      <div class="controls"><button class="control" id="play">Pause</button><button class="control secondary" id="next">Next Step</button></div>
+      <div class="explain"><h2 id="title"></h2><p id="text"></p></div>
+      <div class="explain"><h2>Core Question</h2><p>Every query is trying to answer one of four things: acquisition, activation, retention, or monetization.</p></div>
+    </aside>
+    <div class="viz">
+      <div class="bar">
+        <span class="pill" style="--dot:var(--acq)">users</span>
+        <span class="pill" style="--dot:var(--act)">events</span>
+        <span class="pill" style="--dot:var(--rev)">orders</span>
+        <span class="pill" style="--dot:var(--ret)">marketing_spend</span>
+      </div>
+      <div class="canvas">
+        <svg viewBox="0 0 900 592">
+          <path data-min="1" d="M243 155 C270 155 276 145 300 145"></path>
+          <path data-min="2" d="M530 145 C560 145 568 142 595 142"></path>
+          <path data-min="3" d="M243 242 C250 312 272 385 340 392"></path>
+          <path data-min="3" d="M530 180 C570 230 612 290 660 355"></path>
+          <path data-min="4" d="M580 415 C610 415 628 410 660 410"></path>
+        </svg>
+        <div class="node source" data-min="0"><h3>Source Tables</h3><div class="row"><b>users</b> signup + channel</div><div class="row"><b>events</b> product behavior</div><div class="row"><b>orders</b> revenue</div><div class="row"><b>marketing_spend</b> CAC</div></div>
+        <div class="node grain" data-min="1"><h3>Choose Grain</h3><div class="row">user-day for DAU</div><div class="row">cohort-day for retention</div><div class="row">channel-day for CAC</div></div>
+        <div class="node active" data-min="2"><h3>Engagement Metrics</h3><div class="row">DAU / WAU / MAU</div><div class="row">DAU ÷ MAU stickiness</div><div class="row">funnel conversion</div></div>
+        <div class="node cohort" data-min="3"><h3>Retention Cohorts</h3><div class="row">signup cohort</div><div class="row">day 1 / day 7 / day 30</div><div class="row">churn + resurrection</div></div>
+        <div class="node revenue" data-min="3"><h3>Revenue Metrics</h3><div class="row">LTV = lifetime revenue</div><div class="row">CTV = running order value</div><div class="row">ARPU / ARPPU</div></div>
+        <div class="node decision" data-min="4"><h3>Growth Decisions</h3><div class="row">scale high LTV/CAC channels</div><div class="row">fix activation leaks</div><div class="row">watch payback days</div></div>
+        <div class="formula" id="formula"><h3>Decision logic</h3><p>If channel A has strong activation, high retention, and LTV/CAC above 3, it is a better growth bet than a channel with cheap signups but weak payback.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story">
+    <div>
+      <h2>Business Scenario</h2>
+      <p>A subscription ecommerce app wants to understand whether growth is healthy. The team tracks users, product events, orders, and marketing spend, then turns those raw tables into metrics for product, lifecycle, and growth teams.</p>
+      <div class="cards">
+        <div class="mini"><b>Raw Tables</b><span><code>users</code>, <code>events</code>, <code>orders</code>, <code>marketing_spend</code>.</span></div>
+        <div class="mini"><b>Metric Tables</b><span>Daily active users, cohort retention, channel LTV/CAC, payback.</span></div>
+        <div class="mini"><b>End Users</b><span>Product managers, growth marketers, analysts, founders, finance.</span></div>
+      </div>
+    </div>
+    <div>
+      <h2>End Goal</h2>
+      <p>Answer the real operating questions: are users coming back, are they converting, are channels profitable, and where should the team invest next?</p>
+      <div class="cards">
+        <div class="mini"><b>Engagement</b><span>DAU, MAU, DAU/MAU, power users.</span></div>
+        <div class="mini"><b>Revenue</b><span>LTV, CTV, ARPU, ARPPU, payback.</span></div>
+        <div class="mini"><b>Retention</b><span>Day-N retention, churn, resurrection.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="guide">
+    <div class="guide-card"><h2>Use Cases</h2><ul><li><strong>Product health:</strong> DAU, MAU, stickiness.</li><li><strong>Funnels:</strong> signup to purchase or activation.</li><li><strong>Retention:</strong> cohort matrices and churn.</li><li><strong>Revenue:</strong> LTV, CTV, CAC, payback.</li></ul></div>
+    <div class="guide-card"><h2>How It Saves Money</h2><ul><li><strong>Find weak channels:</strong> stop buying low-LTV users.</li><li><strong>Fix leaks:</strong> identify funnel drop-offs early.</li><li><strong>Improve payback:</strong> know when spend returns.</li><li><strong>Reduce ad waste:</strong> compare CAC to retained value.</li></ul></div>
+    <div class="guide-card"><h2>When To Use It</h2><ul><li>You have user signups and recurring behavior.</li><li>Marketing channels need ROI measurement.</li><li>Retention matters more than one-time traffic.</li><li>Revenue can be tied to users or accounts.</li></ul></div>
+    <div class="guide-card"><h2>When Not To Use It</h2><ul><li>Your tracking events are unreliable.</li><li>You cannot join users to orders or spend.</li><li>The product has no repeat usage motion.</li><li>You need causal answers but only have descriptive data.</li></ul></div>
+  </section>
+
+  <section class="query-lab">
+    <div class="lab-head">
+      <div>
+        <h2>Postgres Query Lab: From Raw Tables To Growth Metrics</h2>
+        <p><b>Flow:</b> <code>users</code> + <code>events</code> + <code>orders</code> + <code>marketing_spend</code> -> <code>daily_growth_metrics</code> and channel ROI outputs.</p>
+      </div>
+      <div class="legend">
+        <span class="tag" style="--tag:var(--new)">raw input</span>
+        <span class="tag" style="--tag:var(--old)">metric grain</span>
+        <span class="tag" style="--tag:var(--changed)">calculated metric</span>
+        <span class="tag" style="--tag:var(--missing)">missing value handled</span>
+      </div>
+    </div>
+    <div class="lab-grid">
+      <div class="table-card"><h3>Before: source tables</h3><table><thead><tr><th>table</th><th>example rows</th><th>business meaning</th></tr></thead><tbody><tr class="new"><td>users</td><td>user 1, paid_search, signup 2024-01-01</td><td>acquisition</td></tr><tr class="new"><td>events</td><td>user 1, app_open, purchase</td><td>behavior</td></tr><tr class="new"><td>orders</td><td>user 1, $80 revenue</td><td>monetization</td></tr><tr class="new"><td>marketing_spend</td><td>paid_search, $500 spend</td><td>cost</td></tr></tbody></table></div>
+      <div class="table-card"><h3>Metric Grains</h3><table><thead><tr><th>grain</th><th>used for</th></tr></thead><tbody><tr class="oldv"><td>user-day</td><td>DAU, activity, power users</td></tr><tr class="oldv"><td>cohort-day</td><td>retention, payback</td></tr><tr class="oldv"><td>channel-day</td><td>CAC and channel ROI</td></tr><tr class="oldv"><td>user lifetime</td><td>LTV and CTV</td></tr></tbody></table></div>
+      <pre class="sql-box">-- TABLE 1: users.
+-- One row per person/account. This tells us where the user came from.
+create table users (
+    user_id bigint primary key,
+    signup_date date,
+    acquisition_channel text,
+    country text,
+    plan text
+);
+
+-- TABLE 2: events.
+-- One row per product action. This tells us what the user did.
+create table events (
+    event_id text primary key,
+    user_id bigint,
+    event_name text,
+    event_timestamp timestamp,
+    event_date date
+);
+
+-- TABLE 3: orders.
+-- One row per purchase. This tells us how much money the user created.
+create table orders (
+    order_id text primary key,
+    user_id bigint,
+    order_date date,
+    revenue numeric
+);
+
+-- TABLE 4: marketing_spend.
+-- One row per channel/day. This tells us how much we paid to acquire users.
+create table marketing_spend (
+    spend_date date,
+    acquisition_channel text,
+    spend numeric
+);
+
+-- TABLE 5: dashboard output.
+-- Like a 10-year-old version:
+-- "One row per day with the important product scoreboard numbers."
+create table daily_growth_metrics (
+    metric_date date primary key,
+    dau integer,
+    new_users integer,
+    paying_users integer,
+    revenue numeric,
+    arpu numeric
+);
+
+-- Query 1: build the daily product scoreboard.
+insert into daily_growth_metrics (
+    metric_date,
+    dau,
+    new_users,
+    paying_users,
+    revenue,
+    arpu
+)
+with dau as (
+    -- Count unique active users per day.
+    select
+        event_date,
+        count(distinct user_id) as dau
+    from events
+    where event_name in ('app_open', 'view_product', 'purchase')
+    group by event_date
+),
+new_users as (
+    -- Count how many users signed up each day.
+    select
+        signup_date,
+        count(*) as new_users
+    from users
+    group by signup_date
+),
+revenue as (
+    -- Count who paid and how much money came in each day.
+    select
+        order_date,
+        count(distinct user_id) as paying_users,
+        sum(revenue) as revenue
+    from orders
+    group by order_date
+)
+select
+    d.event_date as metric_date,
+    d.dau,
+    coalesce(n.new_users, 0) as new_users, -- If nobody signed up, show zero.
+    coalesce(r.paying_users, 0) as paying_users,
+    coalesce(r.revenue, 0) as revenue,
+    round(coalesce(r.revenue, 0) / nullif(d.dau, 0), 2) as arpu -- revenue per active user
+from dau d
+left join new_users n
+    on d.event_date = n.signup_date
+left join revenue r
+    on d.event_date = r.order_date;
+
+-- Query 2: LTV, CAC, and LTV/CAC by channel.
+-- Like a 10-year-old version:
+-- "How much are users worth, and how much did it cost to get them?"
+with user_ltv as (
+    select
+        u.user_id,
+        u.acquisition_channel,
+        coalesce(sum(o.revenue), 0) as lifetime_revenue
+    from users u
+    left join orders o
+        on u.user_id = o.user_id
+    group by u.user_id, u.acquisition_channel
+),
+channel_ltv as (
+    select
+        acquisition_channel,
+        avg(lifetime_revenue) as avg_ltv
+    from user_ltv
+    group by acquisition_channel
+),
+channel_cac as (
+    select
+        u.acquisition_channel,
+        sum(m.spend) / nullif(count(distinct u.user_id), 0) as cac
+    from users u
+    left join marketing_spend m
+        on u.signup_date = m.spend_date
+       and u.acquisition_channel = m.acquisition_channel
+    group by u.acquisition_channel
+)
+select
+    l.acquisition_channel,
+    round(l.avg_ltv, 2) as avg_ltv,
+    round(c.cac, 2) as cac,
+    round(l.avg_ltv / nullif(c.cac, 0), 2) as ltv_cac_ratio
+from channel_ltv l
+join channel_cac c
+    on l.acquisition_channel = c.acquisition_channel
+order by ltv_cac_ratio desc;</pre>
+      <div class="table-card"><h3>After: daily_growth_metrics</h3><table><thead><tr><th>metric_date</th><th>dau</th><th>new_users</th><th>paying_users</th><th>revenue</th><th>arpu</th></tr></thead><tbody><tr class="changed"><td>2024-01-01</td><td>120</td><td>35</td><td>8</td><td>640</td><td>5.33</td></tr><tr class="missing"><td>2024-01-02</td><td>95</td><td>0</td><td>4</td><td>210</td><td>2.21</td></tr></tbody></table></div>
+      <div class="table-card"><h3>After: channel ROI</h3><table><thead><tr><th>channel</th><th>avg_ltv</th><th>cac</th><th>ltv_cac_ratio</th><th>decision</th></tr></thead><tbody><tr class="changed"><td>referral</td><td>180</td><td>25</td><td>7.20</td><td>scale</td></tr><tr class="changed"><td>paid_search</td><td>120</td><td>60</td><td>2.00</td><td>optimize</td></tr><tr class="missing"><td>social</td><td>40</td><td>80</td><td>0.50</td><td>pause or fix</td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="query-lab">
+    <div class="lab-head">
+      <div>
+        <h2>More SQL Patterns: Retention, CTV, Funnel</h2>
+        <p>These are the next patterns product teams usually ask for once the daily scoreboard exists.</p>
+      </div>
+    </div>
+    <div class="lab-grid">
+      <pre class="sql-box">-- Retention matrix.
+-- Like a 10-year-old version:
+-- "For each signup day, check who came back after 1 day, 7 days, 30 days."
+with cohorts as (
+    select
+        user_id,
+        signup_date as cohort_date
+    from users
+),
+activity as (
+    select distinct
+        user_id,
+        event_date
+    from events
+    where event_name in ('app_open', 'view_product', 'purchase')
+),
+cohort_activity as (
+    select
+        c.cohort_date,
+        a.event_date - c.cohort_date as days_since_signup,
+        c.user_id
+    from cohorts c
+    join activity a
+        on c.user_id = a.user_id
+    where a.event_date >= c.cohort_date
+)
+select
+    cohort_date,
+    days_since_signup,
+    count(distinct user_id) as retained_users
+from cohort_activity
+where days_since_signup between 0 and 30
+group by cohort_date, days_since_signup
+order by cohort_date, days_since_signup;
+
+-- CTV: cumulative transaction value.
+-- Like a 10-year-old version:
+-- "Keep adding each user's orders as time passes."
+select
+    user_id,
+    order_id,
+    order_date,
+    revenue,
+    sum(revenue) over (
+        partition by user_id
+        order by order_date, order_id
+        rows between unbounded preceding and current row
+    ) as cumulative_transaction_value
+from orders
+order by user_id, order_date, order_id;
+
+-- Funnel conversion.
+-- Like a 10-year-old version:
+-- "How many people made it from step 1 to step 2 to step 3?"
+with user_funnel as (
+    select
+        user_id,
+        min(event_timestamp) filter (where event_name = 'app_open') as app_open_at,
+        min(event_timestamp) filter (where event_name = 'view_product') as view_product_at,
+        min(event_timestamp) filter (where event_name = 'add_to_cart') as add_to_cart_at,
+        min(event_timestamp) filter (where event_name = 'purchase') as purchase_at
+    from events
+    group by user_id
+)
+select
+    count(*) filter (where app_open_at is not null) as app_open_users,
+    count(*) filter (where view_product_at >= app_open_at) as view_product_users,
+    count(*) filter (where add_to_cart_at >= view_product_at) as add_to_cart_users,
+    count(*) filter (where purchase_at >= add_to_cart_at) as purchase_users
+from user_funnel;</pre>
+      <div class="table-card"><h3>Pattern Meaning</h3><table><thead><tr><th>pattern</th><th>question it answers</th></tr></thead><tbody><tr class="changed"><td>retention matrix</td><td>do users come back after signup?</td></tr><tr class="changed"><td>CTV</td><td>how much value has each user generated over time?</td></tr><tr class="changed"><td>funnel</td><td>where do users drop before purchase?</td></tr><tr class="missing"><td>coalesce/nullif</td><td>avoid blank numbers and divide-by-zero errors</td></tr></tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const steps = [
+  ["Raw Product Data", "Start with four practical source tables: users, events, orders, and marketing spend."],
+  ["Choose The Grain", "Decide the row shape first: user-day, cohort-day, channel-day, or user lifetime."],
+  ["Engagement Metrics", "Calculate DAU, WAU, MAU, stickiness, activation, and funnel conversion."],
+  ["Retention + Revenue", "Measure who comes back and how much value they create over time."],
+  ["Growth Decision", "Compare LTV, CAC, payback, and retention to decide what to scale or fix."]
+];
+
+let step = 0;
+let playing = true;
+let timer;
+const stepsEl = document.querySelector("#steps");
+const title = document.querySelector("#title");
+const text = document.querySelector("#text");
+
+function init() {
+  stepsEl.innerHTML = steps.map((s, i) => `<button class="step" data-step="${i}"><i>${i + 1}</i><span><b>${s[0]}</b><span>${s[1]}</span></span></button>`).join("");
+  stepsEl.querySelectorAll("button").forEach((button) => {
+    button.onclick = () => {
+      step = Number(button.dataset.step);
+      playing = false;
+      render();
+    };
+  });
+  document.querySelector("#play").onclick = () => {
+    playing = !playing;
+    render();
+  };
+  document.querySelector("#next").onclick = () => {
+    playing = false;
+    step = (step + 1) % steps.length;
+    render();
+  };
+  render();
+}
+
+function render() {
+  stepsEl.querySelectorAll("button").forEach((button) => button.classList.toggle("active", Number(button.dataset.step) === step));
+  title.textContent = steps[step][0];
+  text.textContent = steps[step][1];
+  document.querySelector("#play").textContent = playing ? "Pause" : "Play";
+  document.querySelectorAll(".node").forEach((node) => {
+    const show = step >= Number(node.dataset.min);
+    node.classList.toggle("show", show);
+    node.classList.toggle("active", show && step === Number(node.dataset.min));
+  });
+  document.querySelectorAll("path").forEach((path) => path.classList.toggle("show", step >= Number(path.dataset.min)));
+  document.querySelector("#formula").classList.toggle("show", step >= 4);
+  clearTimeout(timer);
+  if (playing) timer = setTimeout(() => {
+    step = (step + 1) % steps.length;
+    render();
+  }, 3600);
+}
+
+function escapeSqlHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function highlightSql(value) {
+  const tokenPattern = /(--[^\n]*|'(?:''|[^'])*'|\b(?:and|as|between|bigint|by|coalesce|count|create|current|date|desc|distinct|filter|from|group|in|insert|integer|interval|into|join|left|min|nullif|numeric|on|or|order|over|partition|primary|round|rows|select|sum|table|text|timestamp|where|with)\b|\b\d+\b)/gi;
+  let output = "";
+  let lastIndex = 0;
+  for (const match of value.matchAll(tokenPattern)) {
+    output += escapeSqlHtml(value.slice(lastIndex, match.index));
+    const token = match[0];
+    if (token.startsWith("--")) {
+      output += `<span class="sql-comment">${escapeSqlHtml(token)}</span>`;
+    } else if (token.startsWith("'")) {
+      output += `<span class="sql-string">${escapeSqlHtml(token)}</span>`;
+    } else if (/^\d+$/.test(token)) {
+      output += `<span class="sql-number">${token}</span>`;
+    } else {
+      output += `<span class="sql-keyword">${escapeSqlHtml(token)}</span>`;
+    }
+    lastIndex = match.index + token.length;
+  }
+  output += escapeSqlHtml(value.slice(lastIndex));
+  return output;
+}
+
+document.querySelectorAll(".sql-box").forEach((block) => {
+  block.innerHTML = highlightSql(block.textContent);
+});
+
+init();
+</script>
+</body>
+</html>

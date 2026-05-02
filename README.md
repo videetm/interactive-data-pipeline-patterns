@@ -13,6 +13,7 @@ Preview: the microbatch explainer shows raw hourly events getting deduped, merge
 | Microbatch Hourly Deduped | `microbatch_dedup_animation.html` | Dedupe events hourly, then merge across hours |
 | Little Book of Pipelines | `little_book_pipelines_animation.html` | Group many upstream sources into a shared schema and metadata catalog |
 | Cumulative Table Design | `cumulative_table_design_animation.html` | Build rolling user/entity history using daily facts plus yesterday's snapshot |
+| Growth Product Analytics SQL | `growth_product_analytics_patterns.html` | Calculate DAU, MAU, funnels, retention, LTV, CAC, CTV, and payback |
 
 Each page includes:
 
@@ -58,6 +59,7 @@ Then the pages will be available at URLs like:
 https://YOUR_USERNAME.github.io/interactive-data-pipeline-patterns/microbatch_dedup_animation.html
 https://YOUR_USERNAME.github.io/interactive-data-pipeline-patterns/little_book_pipelines_animation.html
 https://YOUR_USERNAME.github.io/interactive-data-pipeline-patterns/cumulative_table_design_animation.html
+https://YOUR_USERNAME.github.io/interactive-data-pipeline-patterns/growth_product_analytics_patterns.html
 ```
 
 ## Pattern Summaries
@@ -104,6 +106,20 @@ events
 ```
 
 The visual explains how today's daily facts are combined with yesterday's cumulative snapshot to produce today's new cumulative snapshot.
+
+### Growth Product Analytics SQL
+
+Use this when product, growth, or finance teams need a practical metrics layer from user, event, order, and marketing spend data.
+
+Flow:
+
+```text
+users + events + orders + marketing_spend
+  -> daily_growth_metrics
+  -> channel ROI, retention, funnel, and LTV outputs
+```
+
+The visual explains how source tables become product decisions: who came, who activated, who returned, who paid, and which channels are worth scaling.
 
 ## Credits
 
