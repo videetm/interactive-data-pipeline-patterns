@@ -6,22 +6,6 @@ Interactive, browser-based explainers for three practical data engineering pipel
 
 Preview: the microbatch explainer shows raw hourly events getting deduped, merged across hours, and published as a clean daily table.
 
-## Suggested Repo Name
-
-Recommended:
-
-```text
-interactive-data-pipeline-patterns
-```
-
-Other good options:
-
-```text
-data-pipeline-patterns-visualized
-pipeline-patterns-playbook
-visual-data-engineering-patterns
-```
-
 ## What Is Included
 
 | Page | File | Pattern |
