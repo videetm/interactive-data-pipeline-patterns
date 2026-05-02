@@ -426,6 +426,43 @@
       margin-bottom: 16px;
     }
 
+    .glossary {
+      order: 4;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .glossary h2 {
+      margin: 0 0 8px;
+    }
+
+    .glossary-intro {
+      margin-bottom: 14px;
+    }
+
+    .metric-table {
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    .metric-table table {
+      min-width: 980px;
+    }
+
+    .metric-name {
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .metric-table td {
+      vertical-align: top;
+      line-height: 1.38;
+      white-space: normal;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
     .guide-card {
       padding: 17px;
       min-height: 222px;
@@ -445,7 +482,7 @@
     strong { color: var(--ink); }
 
     .query-lab {
-      order: 4;
+      order: 5;
       padding: 20px;
       margin-bottom: 16px;
     }
@@ -628,6 +665,140 @@
     <div class="guide-card"><h2>How It Saves Money</h2><ul><li><strong>Find weak channels:</strong> stop buying low-LTV users.</li><li><strong>Fix leaks:</strong> identify funnel drop-offs early.</li><li><strong>Improve payback:</strong> know when spend returns.</li><li><strong>Reduce ad waste:</strong> compare CAC to retained value.</li></ul></div>
     <div class="guide-card"><h2>When To Use It</h2><ul><li>You have user signups and recurring behavior.</li><li>Marketing channels need ROI measurement.</li><li>Retention matters more than one-time traffic.</li><li>Revenue can be tied to users or accounts.</li></ul></div>
     <div class="guide-card"><h2>When Not To Use It</h2><ul><li>Your tracking events are unreliable.</li><li>You cannot join users to orders or spend.</li><li>The product has no repeat usage motion.</li><li>You need causal answers but only have descriptive data.</li></ul></div>
+  </section>
+
+  <section class="story glossary">
+    <div>
+      <h2>Metric Glossary: Full Form, Definition, Why It Matters</h2>
+      <p class="glossary-intro">Use this as the quick translation layer from business question to SQL metric. The formulas are intentionally simple; real companies usually add filters for bots, refunds, internal users, test accounts, and data quality rules.</p>
+      <div class="metric-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Full Form</th>
+              <th>Plain-English Definition</th>
+              <th>Why It Matters</th>
+              <th>Common Trap</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="changed">
+              <td class="metric-name">DAU</td>
+              <td>Daily Active Users</td>
+              <td>Unique users who performed a meaningful active event on a day.</td>
+              <td>Shows daily product usage and short-term health.</td>
+              <td>Counting weak events like page load can inflate activity.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">WAU</td>
+              <td>Weekly Active Users</td>
+              <td>Unique users active during a calendar week or rolling 7-day window.</td>
+              <td>Smooths noisy daily usage and shows weekly habit strength.</td>
+              <td>Calendar week and rolling 7-day WAU are different.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">MAU</td>
+              <td>Monthly Active Users</td>
+              <td>Unique users active during a month or rolling 30-day window.</td>
+              <td>Shows reach and top-level audience size.</td>
+              <td>MAU can grow while engagement quality gets worse.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">DAU/MAU</td>
+              <td>Daily Active Users divided by Monthly Active Users</td>
+              <td>The share of monthly users who are active on an average day.</td>
+              <td>Measures stickiness and habit frequency.</td>
+              <td>High stickiness is only good if the active event reflects real value.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Activation Rate</td>
+              <td>Activated Users divided by Signups</td>
+              <td>Percent of new users who reach a key value moment, such as first purchase or first project created.</td>
+              <td>Shows whether new users understand and experience the product's value.</td>
+              <td>Choosing the wrong activation event makes the metric useless.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Retention</td>
+              <td>Day-N or Cohort Retention</td>
+              <td>Percent of users from a signup cohort who come back after N days.</td>
+              <td>Shows whether growth is durable or just leaky acquisition.</td>
+              <td>Exact-day retention and rolling retention answer different questions.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Churn</td>
+              <td>Churned Users / Churn Rate</td>
+              <td>Users who stop being active or stop paying during a period.</td>
+              <td>Shows product leakage and revenue risk.</td>
+              <td>Free-user churn and paid-user churn should not be mixed casually.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Resurrection</td>
+              <td>Resurrected Users</td>
+              <td>Users who were inactive for a long gap and then returned.</td>
+              <td>Shows win-back, lifecycle, or seasonality effects.</td>
+              <td>Short inactivity windows can mistake normal usage gaps for resurrection.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">ARPU</td>
+              <td>Average Revenue Per User</td>
+              <td>Total revenue divided by total users or active users.</td>
+              <td>Shows monetization efficiency across the user base.</td>
+              <td>Be explicit whether denominator is all users, active users, or signups.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">ARPPU</td>
+              <td>Average Revenue Per Paying User</td>
+              <td>Total revenue divided by users who paid.</td>
+              <td>Shows monetization depth among buyers.</td>
+              <td>Can rise while total revenue falls if only a few whales remain.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">LTV</td>
+              <td>Lifetime Value</td>
+              <td>Total or predicted revenue/profit a user creates over their lifetime.</td>
+              <td>Used to decide how much you can afford to spend acquiring users.</td>
+              <td>Revenue LTV and profit LTV are not the same.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">CTV</td>
+              <td>Cumulative Transaction Value</td>
+              <td>Running total of a user's transaction revenue over time.</td>
+              <td>Shows how user value builds purchase by purchase.</td>
+              <td>Do not confuse it with predicted LTV; CTV is historical so far.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">CAC</td>
+              <td>Customer Acquisition Cost</td>
+              <td>Marketing spend divided by acquired customers or users.</td>
+              <td>Shows how expensive growth is by channel.</td>
+              <td>Blended CAC can hide one very bad channel.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">LTV/CAC</td>
+              <td>Lifetime Value divided by Customer Acquisition Cost</td>
+              <td>How much value you get back for each acquisition dollar.</td>
+              <td>Helps decide whether a channel is profitable enough to scale.</td>
+              <td>A ratio can look good while payback is too slow for cash flow.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Payback Period</td>
+              <td>CAC Payback Period</td>
+              <td>Number of days or months until cumulative revenue covers acquisition cost.</td>
+              <td>Shows how fast the business recovers marketing spend.</td>
+              <td>Gross revenue payback is optimistic if margins are low.</td>
+            </tr>
+            <tr class="changed">
+              <td class="metric-name">Funnel Conversion</td>
+              <td>Step-to-step Conversion Rate</td>
+              <td>Percent of users who move from one product step to the next.</td>
+              <td>Shows where users drop off before reaching value or purchase.</td>
+              <td>Steps must be ordered by timestamp, not just counted independently.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <section class="query-lab">
